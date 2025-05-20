@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BHADWA AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      font-family: 'Orbitron', sans-serif;
+      box-sizing: border-box;
+      user-select: none;
+    }
+.btmx {
+  position: fixed;
+  bottom: 20px;
+}
+    body {
+      background: radial-gradient(ellipse at center, #0f0f0f 0%, #000 100%);
+      color: hotpink;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      text-align: center;
+      padding: 30px;
+      border: 1px solid lightpink;
+      border-radius: 20px;
+      box-shadow: 0 0 40px lightpink;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      width: 90%;
+      max-width: 600px;
+    }
+
+    h2 {
+      font-size: 2.5em;
+      color: lightpink;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px lightpink;
+    }
+
+    .status {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+      color: hotpink;
+      animation: blink 1.5s infinite alternate;
+    }
+
+    .output {
+      min-height: 60px;
+      font-size: 1.1em;
+      color: #ffffffcc;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 1px solid lightpink;
+      border-radius: 10px;
+      background: rgba(0, 255, 247, 0.1);
+    }
+
+    .voice-input {
+      display: flex;
+      justify-content: center;
+    }
+
+    .bt {
+      background: hotpink;
+      color: #000;
+      font-size: 18px;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 30px;
+      
+      transition: 0.3s ease-in-out;
+      box-shadow: 0 0 15px lightpink, 0 0 30px lightpink  ;   animation: pulse 2s infinite;
+    }
+
+    .bt:hover {
+      transform: scale(1.05);
+    }
+
+    @keyframes blink {
+      0% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0.7;
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 10px lightpink;
+      }
+
+      50% {
+        box-shadow: 0 0 3px lightpink;
+      }
+
+      100% {
+        box-shadow: 0 0 10px lightpink;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>BHADWA AI</h2>
+    <div class="status" id="status">Welcome Sir!</div>
+    <div class="output" id="output"></div>
+    <div class="voice-input">
+      <div class="bt" id="bt" onclick="start()">Start Voice Input</div>
+    </div>
+  </div>
+<p class="btmx">Developed by Shaurya Tripathi</p>
+  <script>
+    const voicein = document.getElementById("bt");
+    const statx = document.getElementById("status");
+
+    function start() {
+      statx.innerText = "Listening...";
+      voicein.innerText = "Listening...";
+      voicein.removeEventListener("click", start);
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert("Your browser doesn't support Speech Recognition. Try using Chrome.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      const output = document.getElementById('output');
+      let finalTranscript = '';
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        output.textContent = finalTranscript + interimTranscript;
+      };
+
+      recognition.onend = () => {
+        const texte = finalTranscript.trim();
+        statx.innerText = "Processing your request...";
+        fallx(texte);
+        voicein.innerText = "Start Voice Input";
+        voicein.addEventListener("click", start);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        statx.innerText = "Please try again.";
+        voicein.innerText = "Start Voice Input";
+        voicein.addEventListener("click", start);
+      };
+
+      recognition.start();
+    }
+
+    async function fallx(texte) {
+      const apiKey = "AIzaSyD8BPE12jbMBa_vVBTEEhsJ2-PaBc6yjV0";
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+      const body = {
+        contents: [
+          {
+            parts: [
+              {
+                text: `You are Bhadwa AI which was programmed by Shaurya Tripathi. Respond in hindi but written in english. Be professional and call the user Hijdu boy. Make responses short please. please act gay very gay and freaky.use bhojpuri. Question: ${texte}`
+              }
+            ]
+          }
+        ]
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+statx.innerHTML = ""
+        const data = await response.json();
+        const ans = data.candidates?.[0]?.content?.parts?.[0]?.text || "No answer found";
+        text = ans.replace(/\*/g, "");
+        if (!text.trim()) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "hi-IN";
+      speechSynthesis.speak(utterance);
+        document.getElementById("output").textContent = ans;
+      } catch (err) {
+        speakx("AI response error.");
+      }
+    }
+
+    function speakx(text) {
+      if (!text.trim()) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "hi-IN";
+      speechSynthesis.speak(utterance);
+    }
+  </script>
+</body>
+
+  </html>
