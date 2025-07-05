@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hand Detector Fixed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: gray;
+      overflow: hidden;
+      font-family: monospace;
+    }
+
+    #camera-container {
+      position: absolute;
+      top: 20px; center: 20px;
+      width: 300px; height: 600px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      background: black;
+    }
+
+    video, canvas {
+      position: absolute;
+      top: 0; left: 0;
+    width:300px; height: 600px;
+      object-fit: cover;
+      transform: scaleX(1); /* Non-mirrored */
+    }
+
+    #log {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      max-height: 150px;
+      background: rgba(0,0,0,0.8);
+      color: #0f0;
+      font-size: 12px;
+      overflow-y: auto;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="camera-container">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
+  <div id="log">Loading...</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const log = document.getElementById('log');
+    const logs = [];
+
+    const hands = new Hands({
+      locateFile: (file) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+    });
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.7,
+    });
+
+    hands.onResults(onResults);
+
+    function addLog(msg) {
+      logs.unshift(`[${new Date().toLocaleTimeString()}] ${msg}`);
+      if (logs.length > 20) logs.pop();
+      log.innerHTML = logs.join('<br>');
+    }
+
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: 200,
+            height: 200,
+            facingMode: 'user'
+          },
+          audio: false
+        });
+        video.srcObject = stream;
+        return new Promise(resolve => {
+          video.onloadedmetadata = () => resolve();
+        });
+      } catch (e) {
+        addLog('Camera error: ' + e.message);
+      }
+    }
+
+    function onResults(results) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+      if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+        document.body.style.background = 'gray';
+        addLog('No hand detected');
+        return;
+      }
+
+      const landmarks = results.multiHandLandmarks[0];
+      drawLandmarks(landmarks);
+
+      const open = isHandOpen(landmarks);
+      if (open) {
+        document.body.style.background = 'red';
+        addLog('Hand OPEN → BG red');
+      } else {
+        document.body.style.background = 'green';
+        addLog('Hand CLOSED → BG green');
+      }
+    }
+
+    function drawLandmarks(landmarks) {
+      for (const lm of landmarks) {
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    function isHandOpen(landmarks) {
+      const tips = [8, 12, 16, 20];
+      const pip = [6, 10, 14, 18];
+      let count = 0;
+      for (let i = 0; i < 4; i++) {
+        if (landmarks[tips[i]].y < landmarks[pip[i]].y) count++;
+      }
+      return count >= 3;
+    }
+
+    async function loop() {
+      await hands.send({ image: video });
+      requestAnimationFrame(loop);
+    }
+
+    (async () => {
+      await initCamera();
+      canvas.width = 200;
+      canvas.height = 200;
+      addLog('Camera ready!');
+      loop();
+    })();
+  </script>
+</body>
+                          </html>
